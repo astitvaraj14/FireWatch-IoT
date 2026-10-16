@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FireWatch</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg">
+<meta name="theme-color" content="#16202b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#16202b; --panel:#1f2d3b; --panel2:#243546; --line:#32465a; --text:#e8eef4; --muted:#93a4b5;
+  --ok:#3ccf9e; --fire:#ff4b38; --warn:#ffc857; --water:#5ab8ff; --off:#6b7c8d;
+  --display:'Barlow Condensed','Arial Narrow',sans-serif; --body:'IBM Plex Sans',system-ui,sans-serif;
+  --c:var(--off);
+}
+body[data-st=safe]{--c:var(--ok)} body[data-st=fire]{--c:var(--fire)} body[data-st=offline]{--c:var(--off)}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.5 var(--body);min-height:100vh;
+  padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);transition:background .5s}
+body[data-st=fire]{background:#3d0f0b}
+main{max-width:1080px;margin:0 auto;padding:16px 16px 56px;display:grid;gap:16px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+header h1{font:700 28px var(--display);letter-spacing:.02em;margin:0}
+.hr{display:flex;gap:10px;align-items:center;color:var(--muted);font-size:14px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;border:1px solid var(--line);color:var(--muted);font-size:13px}
+.chip i{width:8px;height:8px;border-radius:50%;background:var(--off)}
+.chip.on{color:var(--ok);border-color:var(--ok)} .chip.on i{background:var(--ok);animation:blink 1.6s infinite}
+@keyframes blink{50%{opacity:.3}}
+
+.banner{display:none;background:var(--fire);color:#fff;border-radius:10px;padding:12px 16px;font:700 24px var(--display);
+  letter-spacing:.04em;justify-content:space-between;align-items:center;animation:flash 1s steps(2) infinite}
+body[data-st=fire] .banner{display:flex}
+@keyframes flash{50%{background:#b8200f}}
+
+.cols{display:grid;gap:16px;grid-template-columns:1fr}
+@media(min-width:900px){.cols{grid-template-columns:1.25fr 1fr;align-items:start}}
+.col{display:grid;gap:16px}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+.card h2{font:600 22px var(--display);margin:0 0 2px;letter-spacing:.02em}
+.sub{color:var(--muted);font-size:14px;margin:0 0 14px}
+
+/* hero */
+.hero{display:grid;grid-template-columns:150px 1fr;gap:20px;align-items:center;border:2px solid var(--c);transition:border-color .4s}
+body[data-st=fire] .hero{box-shadow:0 0 0 0 rgba(255,75,56,.5);animation:glow 1.2s infinite}
+@keyframes glow{70%{box-shadow:0 0 0 14px rgba(255,75,56,0)}}
+.orb{position:relative;width:150px;height:150px;display:grid;place-items:center}
+.orb .ring{position:absolute;inset:25px;border-radius:50%;border:2px solid var(--c);opacity:0;animation:ring 3s linear infinite}
+.orb .ring:nth-child(2){animation-delay:1s}.orb .ring:nth-child(3){animation-delay:2s}
+body[data-st=offline] .orb .ring{animation:none}
+body[data-st=fire] .orb .ring{animation-duration:1s}
+@keyframes ring{0%{transform:scale(.9);opacity:.8}100%{transform:scale(2);opacity:0}}
+.core{position:relative;width:100px;height:100px;border-radius:50%;background:var(--panel2);border:3px solid var(--c);display:grid;place-items:center;transition:border-color .4s}
+.core svg{width:52px;height:52px;fill:var(--c);transition:fill .4s}
+.core .i-safe,.core .i-fire,.core .i-off{display:none}
+body[data-st=safe] .i-safe,body[data-st=fire] .i-fire,body[data-st=offline] .i-off{display:block}
+.status{font:700 clamp(44px,9vw,76px)/.95 var(--display);margin:0;text-transform:uppercase;color:var(--c);transition:color .4s}
+.detail{margin:8px 0 0;color:var(--muted)}
+.big{font:700 40px var(--display);color:var(--fire);display:none;margin-top:6px;font-variant-numeric:tabular-nums}
+body[data-st=fire] .big{display:block}
+@media(max-width:520px){.hero{grid-template-columns:1fr;text-align:left}.orb{width:110px;height:110px}.core{width:76px;height:76px}.core svg{width:38px;height:38px}}
+
+/* timeline */
+.tl-wrap{position:relative}
+canvas{width:100%;height:56px;display:block;border-radius:6px;background:var(--panel2)}
+.tl-l{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;margin-top:6px}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-top:8px}
+.legend b{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(min-width:520px){.stats{grid-template-columns:repeat(4,1fr)}}
+.stat{background:var(--panel2);border-radius:8px;padding:10px 12px}
+.stat span{display:block;color:var(--muted);font-size:12px}
+.stat b{font:600 22px var(--display);font-variant-numeric:tabular-nums}
+
+/* controls */
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+button{font:600 15px var(--body);padding:11px 16px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--text);cursor:pointer;min-height:44px;transition:border-color .15s,transform .1s}
+button:hover:not(:disabled){border-color:var(--text)} button:active:not(:disabled){transform:scale(.97)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--water);outline-offset:2px}
+button:disabled{opacity:.35;cursor:not-allowed}
+button.primary{background:var(--warn);color:#241a00;border-color:var(--warn)}
+button.danger{background:var(--fire);color:#fff;border-color:var(--fire)}
+input{font:16px var(--body);padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--text);width:100px;min-height:44px}
+
+/* suppression */
+.demo{display:grid;grid-template-columns:110px 1fr;gap:16px;align-items:center}
+.rig svg{width:100%;height:auto;display:block}
+.drop{fill:var(--water);opacity:0}
+body.sup .drop{animation:fall .7s linear infinite}
+.d2{animation-delay:.2s!important}.d3{animation-delay:.4s!important}.d4{animation-delay:.1s!important}.d5{animation-delay:.5s!important}
+@keyframes fall{0%{opacity:0;transform:translateY(0)}20%{opacity:1}100%{opacity:0;transform:translateY(60px)}}
+.flame{transition:opacity .4s}
+body:not([data-st=fire]) .flame{opacity:.08} body.sup .flame{opacity:.08!important}
+.steps{display:flex;gap:6px;margin-bottom:10px}
+.steps span{flex:1;text-align:center;font-size:13px;padding:6px 4px;border-radius:6px;background:var(--panel2);color:var(--muted);border:1px solid transparent}
+.steps span.on{color:var(--text);border-color:var(--warn)}
+.steps span.on.run{border-color:var(--water)}
+.bar{height:6px;background:var(--panel2);border-radius:4px;overflow:hidden;margin:0 0 12px}
+.bar i{display:block;height:100%;width:0;background:var(--warn);transition:width .25s linear}
+body.sup .bar i{background:var(--water)}
+.note{font-size:13px;color:var(--muted);border-left:3px solid var(--warn);padding-left:10px;margin-top:14px}
+@media(max-width:480px){.demo{grid-template-columns:70px 1fr}}
+
+/* log */
+ul{list-style:none;margin:0;padding:0;max-height:300px;overflow:auto}
+li{display:flex;gap:12px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+li.new{animation:in .5s}
+@keyframes in{from{background:rgba(255,200,87,.25)}to{background:transparent}}
+li time{color:var(--muted);min-width:76px;font-variant-numeric:tabular-nums}
+li.fire{color:var(--fire);font-weight:600} li.warn{color:var(--warn)} li.suppress{color:var(--water)}
+
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translate(-50%,30px);background:var(--warn);color:#241a00;
+  padding:10px 16px;border-radius:8px;font-weight:600;opacity:0;pointer-events:none;transition:.25s;max-width:90vw}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body data-st="offline">
+<main>
+  <header>
+    <h1>FireWatch</h1>
+    <div class="hr"><span id="clock"></span><span class="chip" id="conn"><i></i><span id="connTxt">connecting</span></span></div>
+  </header>
+
+  <div class="banner" role="alert"><span>FIRE DETECTED</span><span id="bannerTime">00:00</span></div>
+
+  <div class="cols">
+    <div class="col">
+      <section class="card hero" aria-live="assertive">
+        <div class="orb">
+          <span class="ring"></span><span class="ring"></span><span class="ring"></span>
+          <div class="core">
+            <svg class="i-safe" viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3zm-1.2 14.2-3.5-3.5 1.4-1.4 2.1 2.1 4.6-4.6 1.4 1.4-6 6z"/></svg>
+            <svg class="i-fire" viewBox="0 0 24 24"><path d="M12 2c1 4 6 6 6 12a6 6 0 0 1-12 0c0-3 2-4 3-6 .6 1.8 1.8 2.4 2.4 1.8C10.8 7.6 11 5 12 2z"/></svg>
+            <svg class="i-off" viewBox="0 0 24 24"><path d="M3 11h18v2H3z"/></svg>
+          </div>
+        </div>
+        <div>
+          <h2 class="status" id="status">…</h2>
+          <div class="big" id="fireTimer">00:00</div>
+          <p class="detail" id="detail">Waiting for the sensor node.</p>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Last 5 minutes</h2>
+        <p class="sub">One bar per second, live from the node.</p>
+        <div class="tl-wrap"><canvas id="tl" aria-label="Timeline of node status"></canvas></div>
+        <div class="tl-l"><span>5 min ago</span><span>now</span></div>
+        <div class="legend"><span><b style="background:var(--ok)"></b>Clear</span><span><b style="background:var(--fire)"></b>Fire</span><span><b style="background:var(--off)"></b>Offline</span></div>
+      </section>
+
+      <section class="card">
+        <div class="stats">
+          <div class="stat"><span>Node link</span><b id="sLink">–</b></div>
+          <div class="stat"><span>Last update</span><b id="sAge">–</b></div>
+          <div class="stat"><span>Fire alerts logged</span><b id="sFires">0</b></div>
+          <div class="stat"><span>Node buzzer</span><b id="sBuz">On</b></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="card">
+        <h2>Alerts</h2>
+        <p class="sub">Siren, vibration and notification on this device. Telegram comes from the server if set up.</p>
+        <div class="row">
+          <button id="enable">Enable alerts on this device</button>
+          <button id="mute">Mute node buzzer</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Suppression demo</h2>
+        <p class="sub">Arm, then activate. The node runs a small demo pump or LED for 5 seconds, then shuts it off.</p>
+        <div class="demo">
+          <div class="rig" aria-hidden="true">
+            <svg viewBox="0 0 120 150">
+              <rect x="52" y="0" width="16" height="22" fill="#93a4b5"/>
+              <path d="M36 22h48l-8 14H44z" fill="#93a4b5"/>
+              <circle class="drop" cx="48" cy="44" r="3"/><circle class="drop d2" cx="60" cy="44" r="3"/><circle class="drop d3" cx="72" cy="44" r="3"/>
+              <circle class="drop d4" cx="54" cy="44" r="3"/><circle class="drop d5" cx="66" cy="44" r="3"/>
+              <path class="flame" d="M60 150c-26 0-34-18-26-36 6-14 12-18 14-30 8 8 10 16 8 24 6-4 10-12 8-22 14 14 22 28 22 42 0 14-10 22-26 22z" fill="#ff5a47"/>
+            </svg>
+          </div>
+          <div>
+            <div class="steps"><span id="s1" class="on">Idle</span><span id="s2">Armed</span><span id="s3">Running</span></div>
+            <div class="bar"><i id="prog"></i></div>
+            <div class="row">
+              <input id="pin" type="password" inputmode="numeric" placeholder="PIN" autocomplete="off" aria-label="Operator PIN">
+              <button id="arm">Arm</button>
+              <button id="go" class="primary" disabled>Activate</button>
+              <button id="stop" class="danger">Stop</button>
+            </div>
+          </div>
+        </div>
+        <p class="note">Demonstration only. Use a low-voltage pump into a tray, or an LED. Never connect mains power, and never rely on this as your building's real fire protection.</p>
+      </section>
+
+      <section class="card">
+        <h2>Event log</h2>
+        <ul id="log"><li>No events yet.</li></ul>
+      </section>
+    </div>
+  </div>
+</main>
+<div id="toast" role="status"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const HIST = 300;
+let S = null, prevFire = false, audioCtx = null, sirenTimer = null, alertsOn = false;
+let supStartClient = 0, prevSup = 'idle', lastLogT = 0, hist = [], connected = false;
+$('pin').value = localStorage.getItem('pin') || '';
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 3000); }
+
+async function api(path, body = {}) {
+  const pin = $('pin').value; localStorage.setItem('pin', pin);
+  try {
+    const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, pin }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) toast(j.error || 'Request failed');
+  } catch { toast('Cannot reach the server.'); }
+}
+$('arm').onclick = () => api('/api/arm');
+$('go').onclick = () => api('/api/suppress');
+$('stop').onclick = () => api('/api/stop');
+$('mute').onclick = () => api('/api/mute', { muted: !(S && S.muted) });
+
+$('enable').onclick = async () => {
+  audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') await audioCtx.resume();
+  if ('Notification' in window && Notification.permission === 'default') await Notification.requestPermission();
+  alertsOn = true; beep(0.15); $('enable').textContent = 'Alerts enabled';
+};
+function beep(len = 0.25) {
+  if (!audioCtx) return;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = 'square'; o.frequency.value = 880; g.gain.value = 0.15;
+  o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + len);
+}
+function fireAlert() {
+  if (!alertsOn) return;
+  if (navigator.vibrate) navigator.vibrate([400, 150, 400, 150, 400]);
+  if ('Notification' in window && Notification.permission === 'granted' && navigator.serviceWorker)
+    navigator.serviceWorker.ready.then(r => r.showNotification('Fire detected', { body: 'The sensor node reports flame. Check the area now.', icon: '/icon.svg', requireInteraction: true, tag: 'fire' }));
+  clearInterval(sirenTimer); sirenTimer = setInterval(() => beep(0.3), 600);
+}
+const stopAlert = () => clearInterval(sirenTimer);
+
+const fmt = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+const mmss = ms => { const s = Math.max(0, Math.floor(ms / 1000)); return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
+const ago = ms => ms < 1500 ? 'now' : ms < 60000 ? Math.floor(ms / 1000) + 's ago' : Math.floor(ms / 60000) + 'm ago';
+const status = () => !connected ? 'offline' : !S || !S.online ? 'offline' : S.fire ? 'fire' : 'safe';
+
+// Runs on every server push (instant)
+function onState(s) {
+  S = s;
+  if (prevSup !== 'active' && s.suppression === 'active') supStartClient = Date.now();
+  prevSup = s.suppression;
+  if (s.fire && !prevFire) fireAlert();
+  if (!s.fire && prevFire) stopAlert();
+  prevFire = s.fire;
+  renderLog(); tick();
+}
+
+function renderLog() {
+  const ev = S.events;
+  if (!ev.length) { $('log').innerHTML = '<li>No events yet.</li>'; return; }
+  const prev = lastLogT;
+  $('log').innerHTML = ev.map(e => `<li class="${e.type}${e.t > prev && prev ? ' new' : ''}"><time>${fmt(e.t)}</time><span>${e.msg}</span></li>`).join('');
+  lastLogT = ev[0].t;
+  $('sFires').textContent = ev.filter(e => e.type === 'fire').length;
+}
+
+// Runs every 250 ms (smooth timers and bars)
+function tick() {
+  if (!S) return;
+  const st = status(), now = Date.now();
+  document.body.dataset.st = st;
+  document.body.classList.toggle('sup', S.suppression === 'active');
+  $('status').textContent = { offline: 'Node offline', fire: 'Fire detected', safe: 'All clear' }[st];
+  $('detail').textContent = st === 'fire' ? `Flame first seen at ${fmt(S.fireSince)}. Check the area now.`
+    : st === 'safe' ? `Sensor node online${S.rssi ? `, Wi-Fi ${S.rssi} dBm` : ''}.`
+    : 'No updates from the node. Its local buzzer still works without the app.';
+  if (st === 'fire') { const t = mmss(now - S.fireSince); $('fireTimer').textContent = t; $('bannerTime').textContent = t; }
+  document.title = st === 'fire' ? (Math.floor(now / 700) % 2 ? '🔥 FIRE DETECTED' : '⚠️ FIRE DETECTED') : 'FireWatch';
+
+  $('sLink').textContent = st === 'offline' ? 'Offline' : 'Online';
+  $('sAge').textContent = S.lastSeen ? ago(now - S.lastSeen) : '–';
+  $('sBuz').textContent = S.muted ? 'Muted' : 'On';
+  $('mute').textContent = S.muted ? 'Unmute node buzzer' : 'Mute node buzzer';
+
+  const sup = S.suppression, armed = sup === 'armed', run = sup === 'active';
+  $('go').disabled = !armed; $('arm').disabled = sup !== 'idle';
+  $('s1').className = sup === 'idle' ? 'on' : ''; $('s2').className = armed ? 'on' : ''; $('s3').className = run ? 'on run' : '';
+  $('s2').textContent = armed ? `Armed ${Math.max(0, Math.ceil((S.armedUntil - now) / 1000))}s` : 'Armed';
+  $('prog').style.width = armed ? Math.max(0, Math.min(100, (S.armedUntil - now) / 300)) + '%'
+    : run ? Math.min(100, (now - supStartClient) / 50) + '%' : '0%';
+  $('clock').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+// Timeline: one sample per second
+function sample() { hist.push(S ? status() : 'none'); if (hist.length > HIST) hist.shift(); drawTL(); }
+function drawTL() {
+  const c = $('tl'), dpr = window.devicePixelRatio || 1, w = c.clientWidth, h = c.clientHeight;
+  if (c.width !== w * dpr) { c.width = w * dpr; c.height = h * dpr; }
+  const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  const bw = w / HIST, col = { safe: '#3ccf9e', fire: '#ff4b38', offline: '#6b7c8d' };
+  hist.forEach((s, i) => { if (!col[s]) return; g.fillStyle = col[s]; g.fillRect(w - (hist.length - i) * bw, 6, Math.ceil(bw), h - 12); });
+}
+
+function connect() {
+  const es = new EventSource('/api/stream');
+  es.onopen = () => { connected = true; $('conn').classList.add('on'); $('connTxt').textContent = 'live'; };
+  es.onmessage = e => { connected = true; onState(JSON.parse(e.data)); };
+  es.onerror = () => { connected = false; $('conn').classList.remove('on'); $('connTxt').textContent = 'reconnecting'; tick(); };
+}
+connect();
+setInterval(tick, 250);
+setInterval(sample, 1000);
+addEventListener('resize', drawTL);
+</script>
+</body>
+</html>
